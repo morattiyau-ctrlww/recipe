@@ -109,9 +109,7 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="grid gap-4 py-6">
           <h2 className="text-lg font-semibold">
-            {activeTag === "all"
-              ? "All Recipes"
-              : `"${activeTag}" recipes`}
+            {activeTag === "all" ? "All Recipes" : `"${activeTag}" recipes`}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               {filteredRecipes.length}
             </span>
