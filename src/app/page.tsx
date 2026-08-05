@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFormDialog } from "@/components/recipe-form-dialog";
 import { RecipeDetailDialog } from "@/components/recipe-detail-dialog";
+import { AuthMenu } from "@/components/auth/auth-menu";
 
 export default function Home() {
   const {
@@ -99,10 +100,13 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <Button onClick={openAddDialog} className="gap-1.5">
-            <Plus data-icon="inline-start" />
-            Add Recipe
-          </Button>
+          <div className="flex items-center gap-2">
+            <AuthMenu />
+            <Button onClick={openAddDialog} className="gap-1.5">
+              <Plus data-icon="inline-start" />
+              Add Recipe
+            </Button>
+          </div>
         </div>
       </header>
 
