@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { LogIn, LogOut, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AuthDialog } from "@/components/auth/auth-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
-export function AuthMenu() {
+export function AuthMenu({ onLoginClick }: { onLoginClick: () => void }) {
   const { user, loading, signOut } = useAuth();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,12 +57,9 @@ export function AuthMenu() {
   }
 
   return (
-    <>
-      <Button onClick={() => setDialogOpen(true)} className="gap-1.5">
-        <LogIn />
-        Log In
-      </Button>
-      <AuthDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </>
+    <Button onClick={onLoginClick} className="gap-1.5">
+      <LogIn />
+      Log In
+    </Button>
   );
 }

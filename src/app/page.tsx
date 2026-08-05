@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookOpen, Plus, Search, X } from "lucide-react";
+import { BookOpen, Heart, Plus, Search, X } from "lucide-react";
 import type { Recipe, RecipeFormData } from "@/lib/types";
 import { useRecipes } from "@/hooks/use-recipes";
+import { useAuth } from "@/hooks/use-auth";
+import { useFavorites } from "@/hooks/use-favorites";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +13,7 @@ import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFormDialog } from "@/components/recipe-form-dialog";
 import { RecipeDetailDialog } from "@/components/recipe-detail-dialog";
 import { AuthMenu } from "@/components/auth/auth-menu";
+import { AuthDialog } from "@/components/auth/auth-dialog";
 
 export default function Home() {
   const {
@@ -23,13 +26,20 @@ export default function Home() {
     deleteRecipe,
   } = useRecipes();
 
+  const { user } = useAuth();
+  const favorites = useFavorites();
+  const { favoriteIds } = favorites;
+
   const [formOpen, setFormOpen] = useState(false);
   const [formSession, setFormSession] = useState(0);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   const allTags = useMemo(
     () => Array.from(new Set(recipes.flatMap((r) => r.tags))).sort(),
@@ -43,10 +53,12 @@ export default function Home() {
         !query ||
         recipe.title.toLowerCase().includes(query) ||
         recipe.description.toLowerCase().includes(query);
-      const matchesTag = activeTag === "all" || recipe.tags.includes(activeTag);
-      return matchesSearch && matchesTag;
+      const matchesTag =
+        favoritesOnly || activeTag === "all" || recipe.tags.includes(activeTag);
+      const matchesFavorites = !favoritesOnly || favoriteIds.has(recipe.id);
+      return matchesSearch && matchesTag && matchesFavorites;
     });
-  }, [recipes, search, activeTag]);
+  }, [recipes, search, activeTag, favoritesOnly, favoriteIds]);
 
   function openAddDialog() {
     setEditingRecipe(null);
@@ -83,6 +95,33 @@ export default function Home() {
     }
   }
 
+  function promptLogin(message: string) {
+    setAuthMessage(message);
+    setAuthOpen(true);
+  }
+
+  function handleFavoritesTabClick() {
+    if (!user) {
+      promptLogin("Please log in to view your favorites.");
+      return;
+    }
+    setActiveTag("all");
+    setFavoritesOnly((prev) => !prev);
+  }
+
+  async function handleToggleFavorite(recipeId: string) {
+    if (!user) {
+      promptLogin("Please log in to save recipes.");
+      return;
+    }
+    try {
+      setSaveError(null);
+      await favorites.toggleFavorite(recipeId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <div className="min-h-full">
       <header className="border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -101,7 +140,12 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <AuthMenu />
+            <AuthMenu
+              onLoginClick={() => {
+                setAuthMessage(null);
+                setAuthOpen(true);
+              }}
+            />
             <Button onClick={openAddDialog} className="gap-1.5">
               <Plus data-icon="inline-start" />
               Add Recipe
@@ -113,7 +157,11 @@ export default function Home() {
       <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="grid gap-4 py-6">
           <h2 className="text-lg font-semibold">
-            {activeTag === "all" ? "All Recipes" : `"${activeTag}" recipes`}
+            {favoritesOnly
+              ? "My Favorites"
+              : activeTag === "all"
+                ? "All Recipes"
+                : `"${activeTag}" recipes`}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               {filteredRecipes.length}
             </span>
@@ -141,21 +189,42 @@ export default function Home() {
             )}
           </div>
 
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-sm text-muted-foreground">
-                Filter:
-              </span>
-              <Badge
-                asChild
-                variant={activeTag === "all" ? "default" : "outline"}
-                className="cursor-pointer"
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm text-muted-foreground">Filter:</span>
+            <Badge
+              asChild
+              variant={!favoritesOnly && activeTag === "all" ? "default" : "outline"}
+              className="cursor-pointer"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setFavoritesOnly(false);
+                  setActiveTag("all");
+                }}
               >
-                <button type="button" onClick={() => setActiveTag("all")}>
-                  All
-                </button>
-              </Badge>
-              {allTags.map((tag) => (
+                All
+              </button>
+            </Badge>
+            <Badge
+              asChild
+              variant={favoritesOnly ? "default" : "outline"}
+              className="cursor-pointer"
+            >
+              <button
+                type="button"
+                onClick={handleFavoritesTabClick}
+                className="inline-flex items-center gap-1"
+              >
+                <Heart className={favoritesOnly ? "fill-current" : undefined} />
+                My Favorites
+                {user && (
+                  <span className="tabular-nums">{favoriteIds.size}</span>
+                )}
+              </button>
+            </Badge>
+            {!favoritesOnly &&
+              allTags.map((tag) => (
                 <Badge
                   asChild
                   key={tag}
@@ -164,16 +233,16 @@ export default function Home() {
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      setActiveTag(activeTag === tag ? "all" : tag)
-                    }
+                    onClick={() => {
+                      setFavoritesOnly(false);
+                      setActiveTag(activeTag === tag ? "all" : tag);
+                    }}
                   >
                     {tag}
                   </button>
                 </Badge>
               ))}
-            </div>
-          )}
+          </div>
         </div>
 
         {saveError && (
@@ -208,7 +277,14 @@ export default function Home() {
           </div>
         ) : filteredRecipes.length === 0 ? (
           <div className="mx-auto max-w-sm rounded-xl border border-dashed border-border py-16 text-center">
-            {search.trim() || activeTag !== "all" ? (
+            {favoritesOnly ? (
+              <>
+                <p className="font-medium">No favorites yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tap the heart on a recipe to save it here.
+                </p>
+              </>
+            ) : search.trim() || activeTag !== "all" ? (
               <>
                 <p className="font-medium">No matching recipes</p>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -219,6 +295,7 @@ export default function Home() {
                   onClick={() => {
                     setSearch("");
                     setActiveTag("all");
+                    setFavoritesOnly(false);
                   }}
                   className="mt-4"
                 >
@@ -245,6 +322,11 @@ export default function Home() {
                 key={recipe.id}
                 recipe={recipe}
                 onView={setSelectedRecipe}
+                isFavorited={favoriteIds.has(recipe.id)}
+                favoriteDisabled={
+                  favorites.loading || favorites.pendingId === recipe.id
+                }
+                onToggleFavorite={() => void handleToggleFavorite(recipe.id)}
               />
             ))}
           </div>
@@ -269,6 +351,15 @@ export default function Home() {
           setSelectedRecipe(null);
         }}
         onDelete={handleDelete}
+      />
+
+      <AuthDialog
+        open={authOpen}
+        initialMessage={authMessage}
+        onOpenChange={(open) => {
+          setAuthOpen(open);
+          if (!open) setAuthMessage(null);
+        }}
       />
     </div>
   );

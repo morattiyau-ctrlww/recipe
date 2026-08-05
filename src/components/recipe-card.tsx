@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChefHat } from "lucide-react";
+import { ChefHat, Heart } from "lucide-react";
 import type { Recipe } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,16 +43,48 @@ function RecipeImage({ src, title }: { src: string; title: string }) {
 export function RecipeCard({
   recipe,
   onView,
+  isFavorited,
+  favoriteDisabled,
+  onToggleFavorite,
 }: {
   recipe: Recipe;
   onView: (recipe: Recipe) => void;
+  isFavorited: boolean;
+  favoriteDisabled: boolean;
+  onToggleFavorite: () => void;
 }) {
   const visibleTags = recipe.tags.slice(0, MAX_VISIBLE_TAGS);
   const extraTags = recipe.tags.length - visibleTags.length;
 
   return (
     <Card className="group/card h-full transition-shadow hover:shadow-lg hover:shadow-orange-900/10">
-      <RecipeImage src={recipe.imageUrl} title={recipe.title} />
+      <div className="relative">
+        <RecipeImage src={recipe.imageUrl} title={recipe.title} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={
+            isFavorited ? "Remove from favorites" : "Save to favorites"
+          }
+          aria-pressed={isFavorited}
+          disabled={favoriteDisabled}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className="absolute top-2 right-2 z-10 rounded-full bg-background/90 shadow-sm backdrop-blur-sm hover:bg-background"
+        >
+          <Heart
+            className={
+              isFavorited
+                ? "fill-red-500 text-red-500"
+                : "text-muted-foreground"
+            }
+          />
+        </Button>
+      </div>
       <CardContent className="flex flex-1 flex-col gap-2 pt-4">
         <CardTitle className="line-clamp-1 text-lg">{recipe.title}</CardTitle>
         <p className="line-clamp-2 text-sm text-muted-foreground">

@@ -21,9 +21,14 @@ type AuthMode = "signin" | "signup";
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialMessage?: string | null;
 }
 
-export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+export function AuthDialog({
+  open,
+  onOpenChange,
+  initialMessage,
+}: AuthDialogProps) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
@@ -35,7 +40,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const isSignUp = mode === "signup";
 
   function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen) {
+    if (nextOpen) {
+      if (initialMessage) setInfo(initialMessage);
+    } else {
       setMode("signin");
       setEmail("");
       setPassword("");
